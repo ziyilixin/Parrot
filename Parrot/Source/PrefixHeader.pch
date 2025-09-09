@@ -1,0 +1,46 @@
+//
+//  PrefixHeader.pch
+//  Parrot
+//
+//  Created by WCF on 2025/9/9.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+#define MAS_SHORTHAND
+
+#import <AFNetworking.h>
+#import <UIKit/UIKit.h>
+#import <SDWebImage/SDWebImage.h>
+#import "Masonry.h"
+#import <MJExtension.h>
+#import <SVProgressHUD.h>
+#import <FMDB/FMDB.h>
+#import "Parrot-Swift.h"
+#import "ParrotColor.h"
+#import "UIColor+Hex.h"
+#import "UIImage+GIFImage.h"
+#import "MassageConst.h"
+#import "SVProgressHUD+Extension.h"
+#import "UIButton+Layout.h"
+
+#define ImageNamed(name) [UIImage imageNamed:name]
+#define ShowDiff (iPhoneX ? 34: 20)
+#define iPhoneX (kScreenWidth== 375.f && kScreenHeight == 812.f)||(kScreenWidth== 414.f && kScreenHeight == 896.f)
+#define kScreenWidth [UIScreen mainScreen].bounds.size.width
+#define kScreenHeight [UIScreen mainScreen].bounds.size.height
+#define UserDefaults [NSUserDefaults standardUserDefaults]
+#define kStatusBarHeight [[UIApplication sharedApplication] statusBarFrame].size.height
+#define AppVersion [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"]
+#define AppName [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"]
+
+//苹方常规
+static NSString * const PingFangRegular = @"PingFangSC-Regular";
+//苹方中粗体
+static NSString * const PingFangMedium = @"PingFangSC-Medium";
+//苹方粗体
+static NSString * const PingFangBold = @"PingFangSC-Semibold";
+static NSString * const PingFangArialBold = @"Arial-BoldMT";
+
+#endif /* PrefixHeader_pch */
