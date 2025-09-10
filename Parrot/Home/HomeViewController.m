@@ -7,17 +7,18 @@
 
 #import "HomeViewController.h"
 #import "ParrotProfileView.h"
-#import "DailyReminderView.h"
+#import "HealthDiagnosisView.h"
 #import "ParrotDataManager.h"
+#import "DiagnosisManager.h"
 #import "AddParrotViewController.h"
 #import <AppTrackingTransparency/AppTrackingTransparency.h>
 #import <AdSupport/AdSupport.h>
 
-@interface HomeViewController ()
+@interface HomeViewController () <HealthDiagnosisViewDelegate>
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) ParrotProfileView *parrotProfileView;
-@property (nonatomic, strong) DailyReminderView *dailyReminderView;
+@property (nonatomic, strong) HealthDiagnosisView *healthDiagnosisView;
 @end
 
 @implementation HomeViewController
@@ -42,6 +43,7 @@
     
     // Reload data from database every time the view appears
     [self.parrotProfileView loadParrotData];
+    [self.healthDiagnosisView refreshData];
 }
 
 - (void)applyAdvertising {
@@ -140,19 +142,20 @@
         make.left.right.equalTo(contentView);
     }];
     
-    // 日常提醒视图
-    DailyReminderView *dailyReminderView = [[DailyReminderView alloc] init];
-    [contentView addSubview:dailyReminderView];
-    self.dailyReminderView = dailyReminderView;
-    [dailyReminderView mas_makeConstraints:^(MASConstraintMaker *make) {
+    // 健康诊断视图
+    HealthDiagnosisView *healthDiagnosisView = [[HealthDiagnosisView alloc] init];
+    healthDiagnosisView.delegate = self;
+    [contentView addSubview:healthDiagnosisView];
+    self.healthDiagnosisView = healthDiagnosisView;
+    [healthDiagnosisView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(parrotProfileView.mas_bottom).offset(20);
         make.left.right.equalTo(contentView);
-        make.height.mas_equalTo(140);
         make.bottom.equalTo(contentView).offset(-20);
     }];
     
-    // Initialize database
+    // Initialize databases
     [[ParrotDataManager sharedManager] initializeDatabase];
+    [[DiagnosisManager sharedManager] initializeDatabase];
 }
 
 - (void)setupNotifications {
@@ -195,6 +198,14 @@
     // This method is no longer needed since we reload data in viewWillAppear
     // But keeping it for compatibility
 }
+
+#pragma mark - HealthDiagnosisViewDelegate
+
+- (void)healthDiagnosisDidComplete {
+    // Refresh the diagnosis history
+    [self.healthDiagnosisView refreshData];
+}
+
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
