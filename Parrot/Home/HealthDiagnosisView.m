@@ -10,18 +10,9 @@
 #import "DiagnosisRecord.h"
 #import "Masonry.h"
 #import "ParrotColor.h"
+#import "ImagePickerManager.h"
 
 @interface HealthDiagnosisView ()
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UITextView *symptomsTextView;
-@property (nonatomic, strong) UIButton *photoButton;
-@property (nonatomic, strong) UIImageView *photoPreview;
-@property (nonatomic, strong) UIButton *diagnoseButton;
-@property (nonatomic, strong) UIScrollView *historyScrollView;
-@property (nonatomic, strong) UIStackView *historyStackView;
-@property (nonatomic, strong) NSArray<DiagnosisRecord *> *diagnosisRecords;
-@property (nonatomic, strong) DiagnosisManager *diagnosisManager;
-@property (nonatomic, strong) UIImage *selectedPhoto;
 @end
 
 @implementation HealthDiagnosisView
@@ -111,7 +102,7 @@
     [photoSection mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(inputSection.mas_bottom).offset(15);
         make.left.right.equalTo(containerView).inset(20);
-        make.height.mas_equalTo(80);
+        make.height.mas_equalTo(180);
     }];
     
     UILabel *photoLabel = [[UILabel alloc] init];
@@ -143,20 +134,48 @@
         make.height.mas_equalTo(32);
     }];
     
-    // Photo preview
-    UIImageView *photoPreview = [[UIImageView alloc] init];
-    photoPreview.backgroundColor = [UIColor clearColor];
-    photoPreview.contentMode = UIViewContentModeScaleAspectFill;
-    photoPreview.clipsToBounds = YES;
-    photoPreview.layer.cornerRadius = 6;
-    photoPreview.hidden = YES;
-    [photoSection addSubview:photoPreview];
-    self.photoPreview = photoPreview;
-    [photoPreview mas_makeConstraints:^(MASConstraintMaker *make) {
+    // Photo preview container
+    UIView *photoPreviewContainer = [[UIView alloc] init];
+    photoPreviewContainer.backgroundColor = [UIColor whiteColor];
+    photoPreviewContainer.layer.cornerRadius = 8;
+    photoPreviewContainer.layer.borderWidth = 1;
+    photoPreviewContainer.layer.borderColor = ParrotBorderGray.CGColor;
+    photoPreviewContainer.hidden = YES;
+    [photoSection addSubview:photoPreviewContainer];
+    self.photoPreviewContainer = photoPreviewContainer;
+    [photoPreviewContainer mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(photoLabel.mas_bottom).offset(8);
         make.left.equalTo(photoButton.mas_right).offset(8);
         make.right.equalTo(photoSection).offset(-12);
-        make.height.mas_equalTo(32);
+        make.height.mas_equalTo(140);
+    }];
+    
+    // Delete photo button (positioned at top right corner)
+    UIButton *deletePhotoButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [deletePhotoButton setTitle:@"✕" forState:UIControlStateNormal];
+    [deletePhotoButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    deletePhotoButton.backgroundColor = [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.8];
+    deletePhotoButton.layer.cornerRadius = 12;
+    deletePhotoButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
+    [deletePhotoButton addTarget:self action:@selector(deletePhotoButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    [photoPreviewContainer addSubview:deletePhotoButton];
+    self.deletePhotoButton = deletePhotoButton;
+    [deletePhotoButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(photoPreviewContainer).offset(8);
+        make.right.equalTo(photoPreviewContainer).offset(-8);
+        make.width.height.mas_equalTo(24);
+    }];
+    
+    // Photo preview
+    UIImageView *photoPreview = [[UIImageView alloc] init];
+    photoPreview.backgroundColor = [UIColor clearColor];
+    photoPreview.contentMode = UIViewContentModeScaleAspectFit;
+    photoPreview.clipsToBounds = YES;
+    photoPreview.layer.cornerRadius = 6;
+    [photoPreviewContainer addSubview:photoPreview];
+    self.photoPreview = photoPreview;
+    [photoPreview mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.left.right.bottom.equalTo(photoPreviewContainer).inset(8);
     }];
     
     // Diagnose button
@@ -232,8 +251,35 @@
     [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:photoPath];
 }
 
-- (void)photoButtonTapped {
-    [self showImagePicker];
+- (void)photoButtonTapped {    
+    UIViewController *currentVC = [self getCurrentViewController];
+    ImagePickerManager *imagePickerManager = [ImagePickerManager sharedInstance];
+    [imagePickerManager showImagePickerOptionsWithViewController:currentVC];
+    // 关键：在 showImagePickerOptionsWithViewController 之后重新设置 delegate
+    imagePickerManager.delegate = self;
+}
+
+#pragma mark - ImagePickerManagerDelegate
+- (void)ImagePickerManager:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
+    UIImage *selectedImage = info[UIImagePickerControllerOriginalImage];
+    
+    if (selectedImage) {
+        self.selectedPhoto = selectedImage;
+        self.photoPreview.image = selectedImage;
+        self.photoPreviewContainer.hidden = NO;
+        self.photoButton.hidden = YES;
+    }
+}
+
+- (void)ImagePickerManagerDidCancel:(UIImagePickerController *)picker {
+    
+}
+
+- (void)deletePhotoButtonTapped {
+    self.selectedPhoto = nil;
+    self.photoPreview.image = nil;
+    self.photoPreviewContainer.hidden = YES;
+    self.photoButton.hidden = NO;
 }
 
 - (void)addPlaceholderToTextView:(UITextView *)textView placeholder:(NSString *)placeholder {
@@ -267,45 +313,6 @@
         UILabel *placeholderLabel = [textView viewWithTag:999];
         placeholderLabel.hidden = textView.text.length > 0;
     }
-}
-
-- (void)showImagePicker {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Select Photo"
-                                                                   message:@"Choose a photo source"
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    
-    UIAlertAction *cameraAction = [UIAlertAction actionWithTitle:@"Camera"
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction * _Nonnull action) {
-        [self presentImagePickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
-    }];
-    
-    UIAlertAction *libraryAction = [UIAlertAction actionWithTitle:@"Photo Library"
-                                                            style:UIAlertActionStyleDefault
-                                                          handler:^(UIAlertAction * _Nonnull action) {
-        [self presentImagePickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
-    }];
-    
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel"
-                                                           style:UIAlertActionStyleCancel
-                                                         handler:nil];
-    
-    [alert addAction:cameraAction];
-    [alert addAction:libraryAction];
-    [alert addAction:cancelAction];
-    
-    UIViewController *currentVC = [self getCurrentViewController];
-    [currentVC presentViewController:alert animated:YES completion:nil];
-}
-
-- (void)presentImagePickerWithSourceType:(UIImagePickerControllerSourceType)sourceType {
-    UIImagePickerController *picker = [[UIImagePickerController alloc] init];
-    picker.sourceType = sourceType;
-    picker.delegate = (id<UIImagePickerControllerDelegate, UINavigationControllerDelegate>)self;
-    picker.allowsEditing = YES;
-    
-    UIViewController *currentVC = [self getCurrentViewController];
-    [currentVC presentViewController:picker animated:YES completion:nil];
 }
 
 - (void)performDiagnosisWithSymptoms:(NSString *)symptoms photoPath:(NSString *)photoPath {
@@ -482,25 +489,6 @@
 
 - (void)refreshData {
     [self loadDiagnosisHistory];
-}
-
-#pragma mark - UIImagePickerControllerDelegate
-
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)pickerInfo {
-    UIImage *selectedImage = pickerInfo[UIImagePickerControllerEditedImage] ?: pickerInfo[UIImagePickerControllerOriginalImage];
-    
-    if (selectedImage) {
-        self.selectedPhoto = selectedImage;
-        self.photoPreview.image = selectedImage;
-        self.photoPreview.hidden = NO;
-        self.photoButton.hidden = YES;
-    }
-    
-    [picker dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
-    [picker dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (NSString *)saveImageToDocuments:(UIImage *)image {
