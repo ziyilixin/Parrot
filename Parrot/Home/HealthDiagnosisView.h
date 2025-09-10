@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol HealthDiagnosisViewDelegate <NSObject>
 - (void)healthDiagnosisDidComplete;
 - (void)healthDiagnosisView:(HealthDiagnosisView *)view didSelectDiagnosisRecord:(DiagnosisRecord *)record;
+- (void)healthDiagnosisViewDidTapMore:(HealthDiagnosisView *)view;
 @end
 
 @interface HealthDiagnosisView : UIView <ImagePickerManagerDelegate>

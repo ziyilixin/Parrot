@@ -217,7 +217,7 @@
     [historyScrollView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(historyLabel.mas_bottom).offset(10);
         make.left.right.equalTo(containerView).inset(20);
-        make.height.mas_equalTo(250); // 增加高度从150到250
+        make.height.mas_equalTo(300); // 增加高度到300，确保More按钮可见
         make.bottom.equalTo(containerView).offset(-20);
     }];
     
@@ -402,12 +402,18 @@
         emptyLabel.textAlignment = NSTextAlignmentCenter;
         [self.historyStackView addArrangedSubview:emptyLabel];
     } else {
-        // 显示最近的5条记录
-        NSInteger maxRecords = MIN(5, self.diagnosisRecords.count);
+        // 显示最近的3条记录
+        NSInteger maxRecords = MIN(3, self.diagnosisRecords.count);
         for (NSInteger i = 0; i < maxRecords; i++) {
             DiagnosisRecord *record = self.diagnosisRecords[i];
             UIView *recordView = [self createHistoryRecordView:record];
             [self.historyStackView addArrangedSubview:recordView];
+        }
+        
+        // 如果记录超过3条，显示More按钮
+        if (self.diagnosisRecords.count > 3) {
+            UIButton *moreButton = [self createMoreButton];
+            [self.historyStackView addArrangedSubview:moreButton];
         }
     }
 }
@@ -453,13 +459,14 @@
         make.right.equalTo(containerView).offset(-40); // 为箭头留出空间
     }];
     
-    // Confidence label
-    UILabel *confidenceLabel = [[UILabel alloc] init];
-    confidenceLabel.text = [NSString stringWithFormat:@"Confidence: %@", record.confidence];
-    confidenceLabel.font = [UIFont systemFontOfSize:12];
-    confidenceLabel.textColor = ParrotTextGray;
-    [containerView addSubview:confidenceLabel];
-    [confidenceLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    // Diagnosis result label (显示真实的诊断内容)
+    UILabel *diagnosisLabel = [[UILabel alloc] init];
+    diagnosisLabel.text = record.aiDiagnosis;
+    diagnosisLabel.font = [UIFont systemFontOfSize:12];
+    diagnosisLabel.textColor = ParrotTextGray;
+    diagnosisLabel.numberOfLines = 1;
+    [containerView addSubview:diagnosisLabel];
+    [diagnosisLabel mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(symptomsLabel.mas_bottom).offset(4);
         make.left.equalTo(containerView).offset(12);
         make.bottom.equalTo(containerView).offset(-12);
@@ -479,6 +486,34 @@
     }];
     
     return containerView;
+}
+
+- (UIButton *)createMoreButton {
+    UIButton *moreButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    moreButton.backgroundColor = [UIColor whiteColor];
+    moreButton.layer.cornerRadius = 8;
+    moreButton.layer.shadowColor = [UIColor blackColor].CGColor;
+    moreButton.layer.shadowOffset = CGSizeMake(0, 1);
+    moreButton.layer.shadowOpacity = 0.1;
+    moreButton.layer.shadowRadius = 2;
+    
+    [moreButton setTitle:@"More" forState:UIControlStateNormal];
+    [moreButton setTitleColor:ParrotMainColor forState:UIControlStateNormal];
+    moreButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    
+    [moreButton addTarget:self action:@selector(moreButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    
+    [moreButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.height.mas_equalTo(44);
+    }];
+    
+    return moreButton;
+}
+
+- (void)moreButtonTapped {
+    if ([self.delegate respondsToSelector:@selector(healthDiagnosisViewDidTapMore:)]) {
+        [self.delegate healthDiagnosisViewDidTapMore:self];
+    }
 }
 
 - (void)recordViewTapped:(UITapGestureRecognizer *)gesture {

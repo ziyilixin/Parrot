@@ -11,6 +11,7 @@
 #import "ParrotDataManager.h"
 #import "DiagnosisManager.h"
 #import "DiagnosisDetailViewController.h"
+#import "DiagnosisHistoryViewController.h"
 #import "AddParrotViewController.h"
 #import <AppTrackingTransparency/AppTrackingTransparency.h>
 #import <AdSupport/AdSupport.h>
@@ -212,6 +213,13 @@
     DiagnosisDetailViewController *detailVC = [[DiagnosisDetailViewController alloc] initWithDiagnosisRecord:record];
     detailVC.hidesBottomBarWhenPushed = YES;
     [self.navigationController pushViewController:detailVC animated:YES];
+}
+
+- (void)healthDiagnosisViewDidTapMore:(HealthDiagnosisView *)view {
+    // 跳转到历史诊断记录页面
+    DiagnosisHistoryViewController *historyVC = [[DiagnosisHistoryViewController alloc] init];
+    historyVC.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:historyVC animated:YES];
 }
 
 - (void)dealloc {
