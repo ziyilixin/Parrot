@@ -27,6 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 // UI Elements
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextView *symptomsTextView;
+@property (nonatomic, strong) UIButton *voiceButton;
 @property (nonatomic, strong) UIButton *photoButton;
 @property (nonatomic, strong) UIView *photoPreviewContainer;
 @property (nonatomic, strong) UIImageView *photoPreview;

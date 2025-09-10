@@ -11,8 +11,9 @@
 #import "Masonry.h"
 #import "ParrotColor.h"
 #import "ImagePickerManager.h"
+#import "VoiceRecordManager.h"
 
-@interface HealthDiagnosisView ()
+@interface HealthDiagnosisView ()<VoiceRecordManagerDelegate>
 @property (nonatomic, strong) NSString *filePath;
 @property (nonatomic, strong) NSString *fileName;
 @end
@@ -65,7 +66,7 @@
     [inputSection mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(titleLabel.mas_bottom).offset(15);
         make.left.right.equalTo(containerView).inset(20);
-        make.height.mas_equalTo(160);
+        make.height.mas_equalTo(220); // 增加高度以容纳语音按钮
     }];
     
     // Symptoms input
@@ -94,6 +95,25 @@
         make.top.equalTo(symptomsLabel.mas_bottom).offset(8);
         make.left.right.equalTo(inputSection).inset(12);
         make.height.mas_equalTo(120);
+    }];
+    
+    // Voice button
+    UIButton *voiceButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [voiceButton setTitle:@"🎤 Voice Input" forState:UIControlStateNormal];
+    [voiceButton setTitleColor:ParrotMainColor forState:UIControlStateNormal];
+    voiceButton.backgroundColor = [UIColor whiteColor];
+    voiceButton.layer.cornerRadius = 6;
+    voiceButton.layer.borderWidth = 1;
+    voiceButton.layer.borderColor = ParrotMainColor.CGColor;
+    voiceButton.titleLabel.font = [UIFont systemFontOfSize:14];
+    [voiceButton addTarget:self action:@selector(voiceButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    [inputSection addSubview:voiceButton];
+    self.voiceButton = voiceButton;
+    [voiceButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(symptomsTextView.mas_bottom).offset(8);
+        make.left.right.equalTo(inputSection).inset(12);
+        make.height.mas_equalTo(36);
+        make.bottom.equalTo(inputSection).offset(-12);
     }];
     
     // Photo section
@@ -566,6 +586,68 @@
 
 - (void)refreshData {
     [self loadDiagnosisHistory];
+}
+
+- (void)voiceButtonTapped {
+    // 语音输入功能
+    [self endEditing:YES];
+    
+    // 先检查麦克风权限
+    [[VoiceRecordManager sharedInstance] checkMicrophonePermission:^(BOOL micGranted) {
+        if (micGranted) {
+            [UserDefaults setBool:NO forKey:@"MicrophonePermissionDenied"];
+            [UserDefaults synchronize];
+            
+            // 再检查语音识别权限
+            [[VoiceRecordManager sharedInstance] checkSpeechRecognitionPermission:^(BOOL granted) {
+                if (granted) {
+                    [UserDefaults setBool:NO forKey:@"SpeechRecognitionPermissionDenied"];
+                    [UserDefaults synchronize];
+                    
+                    [VoiceRecordManager sharedInstance].delegate = self;
+                    [[VoiceRecordManager sharedInstance] startRecordingWithView:self];
+                } else {
+                    UIViewController *currentVC = [self getCurrentViewController];
+                    BOOL hasPermissionDenied = [UserDefaults boolForKey:@"SpeechRecognitionPermissionDenied"];
+                    if (hasPermissionDenied) {
+                        [[VoiceRecordManager sharedInstance] showPermissionAlertWithMessage:@"Please allow voice recognition permissions in Settings" viewController:currentVC];
+                    }
+                    [UserDefaults setBool:YES forKey:@"SpeechRecognitionPermissionDenied"];
+                    [UserDefaults synchronize];
+                }
+            }];
+        } else {
+            BOOL hasPermissionDenied = [UserDefaults boolForKey:@"MicrophonePermissionDenied"];
+            if (hasPermissionDenied) {
+                UIViewController *currentVC = [self getCurrentViewController];
+                [[VoiceRecordManager sharedInstance] showPermissionAlertWithMessage:@"Please allow microphone access in Settings" viewController:currentVC];
+            }
+            [UserDefaults setBool:YES forKey:@"MicrophonePermissionDenied"];
+            [UserDefaults synchronize];
+        }
+    }];
+}
+
+#pragma mark - VoiceRecordManagerDelegate
+- (void)VoiceRecordManagerDidFinishRecordingWithText:(NSString *)text {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (text.length > 0) {
+            self.symptomsTextView.text = text;
+            // 手动隐藏占位文字
+            UILabel *placeholderLabel = [self.symptomsTextView viewWithTag:999];
+            if (placeholderLabel) {
+                placeholderLabel.hidden = YES;
+            }
+        }
+    });
+}
+
+- (void)VoiceRecordManagerDidFailRecording {
+    NSLog(@"录音失败");
+}
+
+- (void)VoiceRecordManagerDidUpdateDuration:(NSInteger)duration {
+    // 可以在这里处理录音时长的更新
 }
 
 @end
