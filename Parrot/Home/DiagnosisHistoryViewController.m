@@ -32,9 +32,6 @@
 - (void)setupUI {
     self.view.backgroundColor = [UIColor colorWithRed:0.9 green:0.95 blue:0.9 alpha:1.0];
     
-    // 隐藏系统导航栏
-    self.navigationController.navigationBarHidden = YES;
-    
     // 自定义导航栏容器
     UIView *navBarContainer = [[UIView alloc] init];
     navBarContainer.backgroundColor = [UIColor colorWithRed:0.9 green:0.95 blue:0.9 alpha:1.0];
@@ -139,8 +136,8 @@
         }
         
         // 设置内容视图的底部约束
-        [self.contentView mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.bottom.equalTo(self.scrollView).offset(-20);
+        [self.contentView mas_updateConstraints:^(MASConstraintMaker *make) {
+            make.bottom.equalTo(lastView.mas_bottom).offset(20);
         }];
     }
 }
