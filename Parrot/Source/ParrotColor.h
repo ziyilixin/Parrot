@@ -25,6 +25,12 @@
 #define ParrotTextLightGray   [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]    // Light gray text
 #define ParrotCoinGreen       [UIColor colorWithRed:0.3 green:0.7 blue:0.3 alpha:1.0]    // Coin green
 
+// MARK: - Main Theme Color
+#define ParrotMainColor       [UIColor colorWithRed:0.3 green:0.69 blue:0.31 alpha:1.0]  // Main theme color (same as primary green)
+
+// MARK: - Border Colors
+#define ParrotBorderGray      [UIColor colorWithRed:0.85 green:0.85 blue:0.85 alpha:1.0]  // Border gray
+
 // MARK: - Functional Icon Colors
 #define ParrotIconStore       [UIColor colorWithRed:0.2 green:0.6 blue:0.9 alpha:1.0]    // Store blue
 #define ParrotIconPolicy      [UIColor colorWithRed:0.5 green:0.5 blue:0.5 alpha:1.0]    // Policy gray
