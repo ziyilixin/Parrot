@@ -7,10 +7,10 @@
 
 #import "AddParrotViewController.h"
 #import "ParrotDataManager.h"
-#import <PhotosUI/PhotosUI.h>
 #import <objc/runtime.h>
+#import "ImagePickerManager.h"
 
-@interface AddParrotViewController () <UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate>
+@interface AddParrotViewController () <UITextFieldDelegate>
 
 // UI Components
 @property (nonatomic, strong) UIScrollView *scrollView;
@@ -195,8 +195,36 @@
         make.height.mas_equalTo(44);
     }];
     
-    // Default placeholder image
-    imageView.image = ImageNamed(@"login_logo");
+    // 不设置默认图片，避免误导用户
+    imageView.image = nil;
+    
+    // 添加占位符视图，显示相机图标和提示文字
+    UIView *placeholderView = [[UIView alloc] init];
+    placeholderView.backgroundColor = [UIColor colorWithRed:0.95 green:0.95 blue:0.95 alpha:1.0];
+    placeholderView.layer.cornerRadius = 8;
+    placeholderView.layer.borderWidth = 2;
+    placeholderView.layer.borderColor = [UIColor colorWithRed:0.8 green:0.8 blue:0.8 alpha:1.0].CGColor;
+    [imageView addSubview:placeholderView];
+    
+    [placeholderView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.edges.equalTo(imageView);
+    }];
+    
+    // 相机图标
+    UIImageView *cameraIcon = [[UIImageView alloc] init];
+    cameraIcon.image = [UIImage systemImageNamed:@"camera.fill"];
+    cameraIcon.tintColor = [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0];
+    cameraIcon.contentMode = UIViewContentModeScaleAspectFit;
+    [placeholderView addSubview:cameraIcon];
+    
+    [cameraIcon mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerX.equalTo(placeholderView);
+        make.centerY.equalTo(placeholderView);
+        make.width.height.mas_equalTo(30);
+    }];
+    
+    // 保存占位符视图的引用，用于在选择图片后隐藏
+    objc_setAssociatedObject(imageView, @"placeholderView", placeholderView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (void)setupFormFields {
@@ -404,62 +432,33 @@
 
 #pragma mark - Actions
 
+
+
 - (void)photoButtonTapped {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Choose Photo" 
-                                                                  message:@"Select photo source"
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    [self.view endEditing:YES];
     
-    // Camera option
-    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
-        UIAlertAction *cameraAction = [UIAlertAction actionWithTitle:@"Camera" 
-                                                               style:UIAlertActionStyleDefault 
-                                                             handler:^(UIAlertAction *action) {
-            [self presentImagePickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
-        }];
-        [alert addAction:cameraAction];
-    }
-    
-    // Photo Library option
-    UIAlertAction *libraryAction = [UIAlertAction actionWithTitle:@"Photo Library" 
-                                                            style:UIAlertActionStyleDefault 
-                                                          handler:^(UIAlertAction *action) {
-        [self presentPHPickerViewController];
-    }];
-    [alert addAction:libraryAction];
-    
-    // Cancel option
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" 
-                                                           style:UIAlertActionStyleCancel 
-                                                         handler:nil];
-    [alert addAction:cancelAction];
-    
-    // For iPad
-    alert.popoverPresentationController.sourceView = self.photoButton;
-    alert.popoverPresentationController.sourceRect = self.photoButton.bounds;
-    
-    [self presentViewController:alert animated:YES completion:nil];
+    [[ImagePickerManager sharedInstance] showImagePickerOptionsWithViewController:self];
 }
 
-- (void)presentImagePickerWithSourceType:(UIImagePickerControllerSourceType)sourceType {
-    UIImagePickerController *picker = [[UIImagePickerController alloc] init];
-    picker.delegate = self;
-    picker.sourceType = sourceType;
-    picker.allowsEditing = YES;
-    [self presentViewController:picker animated:YES completion:nil];
-}
-
-- (void)presentPHPickerViewController {
-    if (@available(iOS 14.0, *)) {
-        PHPickerConfiguration *config = [[PHPickerConfiguration alloc] init];
-        config.selectionLimit = 1;
-        config.filter = [PHPickerFilter imagesFilter];
+#pragma mark - ImagePickerManagerDelegate
+- (void)ImagePickerManager:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
+    UIImage *selectedImage = info[UIImagePickerControllerEditedImage] ?: info[UIImagePickerControllerOriginalImage];
+    
+    if (selectedImage) {
+        self.selectedImage = selectedImage;
+        self.parrotImageView.image = selectedImage;
+        [self.photoButton setTitle:@"Change Photo" forState:UIControlStateNormal];
         
-        PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config];
-        picker.delegate = self;
-        [self presentViewController:picker animated:YES completion:nil];
-    } else {
-        [self presentImagePickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
+        // 隐藏占位符视图
+        UIView *placeholderView = objc_getAssociatedObject(self.parrotImageView, @"placeholderView");
+        if (placeholderView) {
+            placeholderView.hidden = YES;
+        }
     }
+}
+
+- (void)ImagePickerManagerDidCancel:(UIImagePickerController *)picker {
+    
 }
 
 - (void)birthdateButtonTapped {
@@ -644,6 +643,19 @@
     }
 }
 
+- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
+                                                                   message:message
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK"
+                                                       style:UIAlertActionStyleDefault
+                                                     handler:nil];
+    [alert addAction:okAction];
+    
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)cancelButtonTapped {
     [self.navigationController popViewControllerAnimated:YES];
 }
@@ -661,57 +673,6 @@
     [imageData writeToFile:filePath atomically:YES];
     
     return fileName; // Return just the filename, not the full path
-}
-
-- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK"
-                                                       style:UIAlertActionStyleDefault
-                                                     handler:nil];
-    [alert addAction:okAction];
-    
-    [self presentViewController:alert animated:YES completion:nil];
-}
-
-#pragma mark - UIImagePickerControllerDelegate
-
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info {
-    UIImage *selectedImage = info[UIImagePickerControllerEditedImage] ?: info[UIImagePickerControllerOriginalImage];
-    
-    if (selectedImage) {
-        self.selectedImage = selectedImage;
-        self.parrotImageView.image = selectedImage;
-        [self.photoButton setTitle:@"Change Photo" forState:UIControlStateNormal];
-    }
-    
-    [picker dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
-    [picker dismissViewControllerAnimated:YES completion:nil];
-}
-
-#pragma mark - PHPickerViewControllerDelegate
-
-- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14.0)) {
-    [picker dismissViewControllerAnimated:YES completion:nil];
-    
-    if (results.count > 0) {
-        PHPickerResult *result = results.firstObject;
-        [result.itemProvider loadObjectOfClass:[UIImage class] completionHandler:^(__kindof id<NSItemProviderReading>  _Nullable object, NSError * _Nullable error) {
-            if ([object isKindOfClass:[UIImage class]]) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    UIImage *selectedImage = (UIImage *)object;
-                    self.selectedImage = selectedImage;
-                    self.parrotImageView.image = selectedImage;
-                    [self.photoButton setTitle:@"Change Photo" forState:UIControlStateNormal];
-                });
-            }
-        }];
-    }
 }
 
 #pragma mark - UITextFieldDelegate
