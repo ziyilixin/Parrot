@@ -150,7 +150,7 @@
     
     // Photo title
     UILabel *photoTitle = [[UILabel alloc] init];
-    photoTitle.text = @"Parrot Photo";
+    photoTitle.text = @"Parrot Photo *";
     photoTitle.textColor = ParrotTextDarkGray;
     photoTitle.font = [UIFont systemFontOfSize:16 weight:UIFontWeightBold];
     [photoContainer addSubview:photoTitle];
@@ -257,7 +257,7 @@
         make.left.equalTo(formContainer).offset(20);
     }];
     
-    // Name field
+    // Name field (Required)
     UIView *nameFieldView = [self createFieldViewWithTitle:@"Name *" placeholder:@"Enter parrot name"];
     self.nameTextField = (UITextField *)[nameFieldView viewWithTag:100];
     [formContainer addSubview:nameFieldView];
@@ -268,7 +268,7 @@
         make.height.mas_equalTo(70);
     }];
     
-    // Breed field
+    // Breed field (Optional)
     UIView *breedFieldView = [self createFieldViewWithTitle:@"Breed" placeholder:@"e.g., Budgerigar, Cockatiel"];
     self.breedTextField = (UITextField *)[breedFieldView viewWithTag:100];
     [formContainer addSubview:breedFieldView];
@@ -279,8 +279,8 @@
         make.height.mas_equalTo(70);
     }];
     
-    // Color field
-    UIView *colorFieldView = [self createFieldViewWithTitle:@"Color" placeholder:@"e.g., Green, Blue, Yellow"];
+    // Color field (Required)
+    UIView *colorFieldView = [self createFieldViewWithTitle:@"Color *" placeholder:@"e.g., Green, Blue, Yellow"];
     self.colorTextField = (UITextField *)[colorFieldView viewWithTag:100];
     [formContainer addSubview:colorFieldView];
     
@@ -608,8 +608,18 @@
 
 - (void)saveButtonTapped {
     // Validate required fields
+    if (!self.selectedImage) {
+        [self showAlertWithTitle:@"" message:@"Please select a parrot photo."];
+        return;
+    }
+    
     if (!self.nameTextField.text || self.nameTextField.text.length == 0) {
-        [self showAlertWithTitle:@"Error" message:@"Please enter parrot name."];
+        [self showAlertWithTitle:@"" message:@"Please enter parrot name."];
+        return;
+    }
+    
+    if (!self.colorTextField.text || self.colorTextField.text.length == 0) {
+        [self showAlertWithTitle:@"" message:@"Please enter parrot color."];
         return;
     }
     
@@ -617,15 +627,13 @@
     ParrotInfo *parrotInfo = [[ParrotInfo alloc] init];
     parrotInfo.name = self.nameTextField.text;
     parrotInfo.breed = self.breedTextField.text ?: @"";
-    parrotInfo.color = self.colorTextField.text ?: @"";
+    parrotInfo.color = self.colorTextField.text;
     parrotInfo.birthDate = self.selectedBirthdate;
     parrotInfo.userId = [LFWebData shared].userId ?: @"";
     
-    // Save photo if selected
-    if (self.selectedImage) {
-        NSString *photoPath = [self saveImageToDocuments:self.selectedImage];
-        parrotInfo.photoPath = photoPath;
-    }
+    // Save photo
+    NSString *photoPath = [self saveImageToDocuments:self.selectedImage];
+    parrotInfo.photoPath = photoPath;
     
     // Save to database
     ParrotDataManager *manager = [ParrotDataManager sharedManager];
