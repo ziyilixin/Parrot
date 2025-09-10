@@ -1,6 +1,6 @@
 //
 //  WalletHeadView.h
-//  Photography
+//  Parrot
 //
 //  Created by WCF on 2025/9/8.
 //

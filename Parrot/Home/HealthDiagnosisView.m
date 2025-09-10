@@ -13,6 +13,7 @@
 #import "ImagePickerManager.h"
 
 @interface HealthDiagnosisView ()
+@property (nonatomic, strong) NSString *filePath;
 @end
 
 @implementation HealthDiagnosisView
@@ -243,15 +244,13 @@
     }
     
     // 执行诊断
-    NSString *photoPath = nil;
     if (self.selectedPhoto) {
-        photoPath = [self saveImageToDocuments:self.selectedPhoto];
+        NSLog(@"self.filePath = %@",self.filePath);
+        [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:self.filePath];
     }
-    
-    [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:photoPath];
 }
 
-- (void)photoButtonTapped {    
+- (void)photoButtonTapped {
     UIViewController *currentVC = [self getCurrentViewController];
     ImagePickerManager *imagePickerManager = [ImagePickerManager sharedInstance];
     [imagePickerManager showImagePickerOptionsWithViewController:currentVC];
@@ -262,12 +261,19 @@
 #pragma mark - ImagePickerManagerDelegate
 - (void)ImagePickerManager:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
     UIImage *selectedImage = info[UIImagePickerControllerOriginalImage];
-    
     if (selectedImage) {
         self.selectedPhoto = selectedImage;
         self.photoPreview.image = selectedImage;
         self.photoPreviewContainer.hidden = NO;
         self.photoButton.hidden = YES;
+        
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSString *fileName = [NSString stringWithFormat:@"diagnosis_%@.jpg", [[NSUUID UUID] UUIDString]];
+        NSString *filePath = [documentsDirectory stringByAppendingPathComponent:fileName];
+        NSData *imageData = UIImageJPEGRepresentation(selectedImage, 0.8);
+        [imageData writeToFile:filePath atomically:YES];
+        self.filePath = filePath;
     }
 }
 
@@ -280,6 +286,7 @@
     self.photoPreview.image = nil;
     self.photoPreviewContainer.hidden = YES;
     self.photoButton.hidden = NO;
+    self.filePath = nil;
 }
 
 - (void)addPlaceholderToTextView:(UITextView *)textView placeholder:(NSString *)placeholder {
@@ -327,14 +334,15 @@
             [self hideLoadingIndicator];
             
             if (error) {
-                [self showAlertWithTitle:@"Error" message:@"Diagnosis failed. Please try again."];
+                // 显示具体的错误信息
+                NSString *errorMessage = error.localizedDescription;
+                [self showAlertWithTitle:@"Diagnosis Failed" message:errorMessage];
             } else {
                 // 保存诊断记录
                 DiagnosisRecord *record = [[DiagnosisRecord alloc] initWithSymptoms:symptoms
                                                                          photoPath:photoPath
                                                                       aiDiagnosis:diagnosis
                                                                        confidence:confidence];
-                record.userId = [LFWebData shared].userId;
                 
                 if ([self.diagnosisManager saveDiagnosisRecord:record]) {
                     [self showDiagnosisResult:diagnosis confidence:confidence];
@@ -490,18 +498,5 @@
 - (void)refreshData {
     [self loadDiagnosisHistory];
 }
-
-- (NSString *)saveImageToDocuments:(UIImage *)image {
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *fileName = [NSString stringWithFormat:@"diagnosis_%@.jpg", [[NSUUID UUID] UUIDString]];
-    NSString *filePath = [documentsDirectory stringByAppendingPathComponent:fileName];
-    
-    NSData *imageData = UIImageJPEGRepresentation(image, 0.8);
-    [imageData writeToFile:filePath atomically:YES];
-    
-    return fileName; // 只返回文件名，不返回完整路径
-}
-
 
 @end

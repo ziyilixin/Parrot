@@ -7,10 +7,12 @@
 
 #import "DiagnosisManager.h"
 #import "FMDB.h"
+#import "OpenAiApi.h"
 
 @interface DiagnosisManager ()
 @property (nonatomic, strong) FMDatabase *database;
 @property (nonatomic, strong) NSString *databasePath;
+@property (nonatomic, strong) OpenAiApi *openAiApi;
 @end
 
 @implementation DiagnosisManager
@@ -27,6 +29,7 @@
 - (instancetype)init {
     if (self = [super init]) {
         [self setupDatabasePath];
+        self.openAiApi = [[OpenAiApi alloc] init];
     }
     return self;
 }
@@ -199,17 +202,40 @@
                             photoPath:(NSString *)photoPath
                            completion:(void(^)(NSString *diagnosis, NSString *confidence, NSError *error))completion {
     
-    // 模拟AI诊断过程
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        
-        // 这里应该调用真实的AI API，现在使用模拟数据
-        NSString *diagnosis = [self generateMockDiagnosis:symptoms];
-        NSString *confidence = [self generateMockConfidence];
-        
+    // 检查用户是否已登录
+    NSString *userId = [LFWebData shared].userId;
+    if (!userId || userId.length == 0) {
+        NSError *loginError = [NSError errorWithDomain:@"DiagnosisError" 
+                                                  code:1001 
+                                              userInfo:@{NSLocalizedDescriptionKey: @"Please login first to use AI diagnosis."}];
         if (completion) {
-            completion(diagnosis, confidence, nil);
+            completion(nil, nil, loginError);
         }
-    });
+        return;
+    }
+    
+    // 使用真实的AI API进行诊断
+    [self.openAiApi sendMessageToChatGPT:symptoms
+                               imagePath:photoPath
+                              completion:^(NSString *reply, NSError *error) {
+        if (error) {
+            // AI API失败，给用户合理的提醒
+            NSLog(@"AI API failed: %@", error.localizedDescription);
+            NSError *diagnosisError = [NSError errorWithDomain:@"DiagnosisError" 
+                                                          code:1002 
+                                                      userInfo:@{NSLocalizedDescriptionKey: @"AI diagnosis service is temporarily unavailable. Please check your network connection and try again later."}];
+            if (completion) {
+                completion(nil, nil, diagnosisError);
+            }
+        } else {
+            // AI API成功，使用真实结果
+            NSString *diagnosis = reply ?: @"Unable to generate diagnosis.";
+            NSString *confidence = @"AI Analysis"; // 真实AI分析
+            if (completion) {
+                completion(diagnosis, confidence, nil);
+            }
+        }
+    }];
 }
 
 - (NSString *)generateMockDiagnosis:(NSString *)symptoms {

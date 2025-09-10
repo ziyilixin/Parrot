@@ -15,6 +15,7 @@
                     confidence:(NSString *)confidence {
     if (self = [super init]) {
         self.recordId = [[NSUUID UUID] UUIDString];
+        self.userId = [LFWebData shared].userId; // 自动设置当前登录用户ID
         self.symptoms = symptoms;
         self.photoPath = photoPath;
         self.aiDiagnosis = aiDiagnosis;
