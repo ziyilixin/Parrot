@@ -13,7 +13,7 @@
 #import <AppTrackingTransparency/AppTrackingTransparency.h>
 #import <AdSupport/AdSupport.h>
 
-@interface HomeViewController () <AddParrotViewControllerDelegate>
+@interface HomeViewController ()
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) ParrotProfileView *parrotProfileView;
@@ -35,6 +35,13 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self applyAdvertising];
     });
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    
+    // Reload data from database every time the view appears
+    [self.parrotProfileView loadParrotData];
 }
 
 - (void)applyAdvertising {
@@ -158,18 +165,12 @@
                                              selector:@selector(showEditParrotForm:)
                                                  name:@"ShowEditParrotForm"
                                                object:nil];
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(parrotDataUpdated)
-                                                 name:@"ParrotDataUpdated"
-                                               object:nil];
 }
 
 - (void)showAddParrotForm {
     NSLog(@"Show add parrot form");
     
     AddParrotViewController *addVC = [[AddParrotViewController alloc] init];
-    addVC.delegate = self;
     addVC.hidesBottomBarWhenPushed = YES;
     [self.navigationController pushViewController:addVC animated:YES];
 }
@@ -182,34 +183,17 @@
 }
 
 - (void)showParrotFormWithParrotInfo:(ParrotInfo *)parrotInfo {
-    // For now, just show an alert as placeholder
-    NSString *title = parrotInfo ? @"Edit Parrot" : @"Add Parrot";
-    NSString *message = parrotInfo ? [NSString stringWithFormat:@"Edit %@'s information", parrotInfo.name] : @"Add your parrot's information";
-    
-    UIAlertController *alertController = [UIAlertController 
-        alertControllerWithTitle:title 
-        message:message 
-        preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction *okAction = [UIAlertAction 
-        actionWithTitle:@"OK" 
-        style:UIAlertActionStyleDefault 
-        handler:nil];
-    
-    [alertController addAction:okAction];
-    [self presentViewController:alertController animated:YES completion:nil];
-}
-
-- (void)parrotDataUpdated {
-    // Refresh the parrot profile view
-    [self.parrotProfileView loadParrotData];
+    AddParrotViewController *addVC = [[AddParrotViewController alloc] init];
+    addVC.parrotInfoToEdit = parrotInfo; // 传递要编辑的鹦鹉信息
+    addVC.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:addVC animated:YES];
 }
 
 #pragma mark - AddParrotViewControllerDelegate
 
 - (void)didAddParrotSuccessfully {
-    // Refresh the parrot profile view
-    [self.parrotProfileView loadParrotData];
+    // This method is no longer needed since we reload data in viewWillAppear
+    // But keeping it for compatibility
 }
 
 - (void)dealloc {

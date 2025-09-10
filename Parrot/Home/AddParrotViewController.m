@@ -48,10 +48,15 @@
     [self setupUI];
     [self setupNavigationBar];
     [self setupDefaultValues];
+    
+    // 如果是编辑模式，加载现有数据
+    if (self.parrotInfoToEdit) {
+        [self loadParrotDataForEdit];
+    }
 }
 
 - (void)setupNavigationBar {
-    self.title = @"Add Parrot";
+    self.title = self.parrotInfoToEdit ? @"Edit Parrot" : @"Add Parrot";
     self.navigationController.navigationBar.hidden = NO;
     
     // Navigation bar style
@@ -66,6 +71,40 @@
     // Set default birthdate to 1 year ago
     self.selectedBirthdate = [NSDate dateWithTimeIntervalSinceNow:-(365 * 24 * 60 * 60)];
     [self updateBirthdateButtonTitle];
+}
+
+
+- (void)loadParrotDataForEdit {
+    if (!self.parrotInfoToEdit) return;
+    
+    // 填充表单数据
+    self.nameTextField.text = self.parrotInfoToEdit.name ?: @"";
+    self.breedTextField.text = self.parrotInfoToEdit.breed ?: @"";
+    self.colorTextField.text = self.parrotInfoToEdit.color ?: @"";
+    
+    if (self.parrotInfoToEdit.birthDate) {
+        self.selectedBirthdate = self.parrotInfoToEdit.birthDate;
+        [self updateBirthdateButtonTitle];
+    }
+    
+    // 加载照片
+    if (self.parrotInfoToEdit.photoPath && self.parrotInfoToEdit.photoPath.length > 0) {
+        // 构建完整的文件路径
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSString *fullPath = [documentsDirectory stringByAppendingPathComponent:self.parrotInfoToEdit.photoPath];
+        
+        UIImage *parrotImage = [UIImage imageWithContentsOfFile:fullPath];
+        if (parrotImage) {
+            self.selectedImage = parrotImage;
+            self.parrotImageView.image = parrotImage;
+            // 隐藏占位符视图
+            UIView *placeholderView = objc_getAssociatedObject(self.parrotImageView, @"placeholderView");
+            if (placeholderView) {
+                placeholderView.hidden = YES;
+            }
+        }
+    }
 }
 
 - (void)setupUI {
@@ -623,13 +662,24 @@
         return;
     }
     
-    // Create ParrotInfo object
-    ParrotInfo *parrotInfo = [[ParrotInfo alloc] init];
-    parrotInfo.name = self.nameTextField.text;
-    parrotInfo.breed = self.breedTextField.text ?: @"";
-    parrotInfo.color = self.colorTextField.text;
-    parrotInfo.birthDate = self.selectedBirthdate;
-    parrotInfo.userId = [LFWebData shared].userId ?: @"";
+    // Create or update ParrotInfo object
+    ParrotInfo *parrotInfo;
+    if (self.parrotInfoToEdit) {
+        // 编辑模式：使用现有的parrotInfo
+        parrotInfo = self.parrotInfoToEdit;
+        parrotInfo.name = self.nameTextField.text;
+        parrotInfo.breed = self.breedTextField.text ?: @"";
+        parrotInfo.color = self.colorTextField.text;
+        parrotInfo.birthDate = self.selectedBirthdate;
+    } else {
+        // 添加模式：创建新的parrotInfo
+        parrotInfo = [[ParrotInfo alloc] init];
+        parrotInfo.name = self.nameTextField.text;
+        parrotInfo.breed = self.breedTextField.text ?: @"";
+        parrotInfo.color = self.colorTextField.text;
+        parrotInfo.birthDate = self.selectedBirthdate;
+        parrotInfo.userId = [LFWebData shared].userId ?: @"";
+    }
     
     // Save photo
     NSString *photoPath = [self saveImageToDocuments:self.selectedImage];
@@ -637,14 +687,18 @@
     
     // Save to database
     ParrotDataManager *manager = [ParrotDataManager sharedManager];
-    BOOL success = [manager saveParrotInfo:parrotInfo];
+    BOOL success;
+    if (self.parrotInfoToEdit) {
+        // 编辑模式：更新现有记录
+        success = [manager updateParrotInfo:parrotInfo];
+    } else {
+        // 添加模式：保存新记录
+        success = [manager saveParrotInfo:parrotInfo];
+    }
     
     if (success) {
-        // Notify delegate
-        if ([self.delegate respondsToSelector:@selector(didAddParrotSuccessfully)]) {
-            [self.delegate didAddParrotSuccessfully];
-        }
-        
+        // Simply pop back to previous view controller
+        // The previous view controller will reload data from database when it appears
         [self.navigationController popViewControllerAnimated:YES];
     } else {
         [self showAlertWithTitle:@"Error" message:@"Failed to save parrot information. Please try again."];

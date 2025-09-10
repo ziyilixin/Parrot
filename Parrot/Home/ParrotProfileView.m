@@ -262,7 +262,12 @@
     
     // Load parrot photo if available
     if (self.currentParrotInfo.photoPath && self.currentParrotInfo.photoPath.length > 0) {
-        UIImage *parrotImage = [UIImage imageWithContentsOfFile:self.currentParrotInfo.photoPath];
+        // 构建完整的文件路径
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSString *fullPath = [documentsDirectory stringByAppendingPathComponent:self.currentParrotInfo.photoPath];
+        
+        UIImage *parrotImage = [UIImage imageWithContentsOfFile:fullPath];
         if (parrotImage) {
             self.parrotImageView.image = parrotImage;
         }
@@ -357,7 +362,11 @@
     if (parrotInfo[@"birthDate"]) {
         NSDate *birthDate = parrotInfo[@"birthDate"];
         NSInteger age = [self calculateAgeFromBirthDate:birthDate];
-        self.ageLabel.text = [NSString stringWithFormat:@"%ld岁", (long)age];
+        if (age == 1) {
+            self.ageLabel.text = @"1 year";
+        } else {
+            self.ageLabel.text = [NSString stringWithFormat:@"%ld years", (long)age];
+        }
     }
 }
 

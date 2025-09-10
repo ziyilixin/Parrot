@@ -6,16 +6,13 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "ParrotDataManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol AddParrotViewControllerDelegate <NSObject>
-- (void)didAddParrotSuccessfully;
-@end
-
 @interface AddParrotViewController : UIViewController
 
-@property (nonatomic, weak) id<AddParrotViewControllerDelegate> delegate;
+@property (nonatomic, strong) ParrotInfo *parrotInfoToEdit; // 要编辑的鹦鹉信息，nil表示添加模式
 
 @end
 
