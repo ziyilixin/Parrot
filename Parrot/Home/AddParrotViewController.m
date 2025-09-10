@@ -46,25 +46,12 @@
     [super viewDidLoad];
     
     [self setupUI];
-    [self setupNavigationBar];
     [self setupDefaultValues];
     
     // 如果是编辑模式，加载现有数据
     if (self.parrotInfoToEdit) {
         [self loadParrotDataForEdit];
     }
-}
-
-- (void)setupNavigationBar {
-    self.title = self.parrotInfoToEdit ? @"Edit Parrot" : @"Add Parrot";
-    self.navigationController.navigationBar.hidden = NO;
-    
-    // Navigation bar style
-    [self.navigationController.navigationBar setBackgroundColor:ColorFFFFFF];
-    [self.navigationController.navigationBar setTitleTextAttributes:@{
-        NSForegroundColorAttributeName: ParrotTextDarkGray,
-        NSFontAttributeName: [UIFont systemFontOfSize:18 weight:UIFontWeightBold]
-    }];
 }
 
 - (void)setupDefaultValues {

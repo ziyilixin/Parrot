@@ -10,6 +10,7 @@
 #import "HealthDiagnosisView.h"
 #import "ParrotDataManager.h"
 #import "DiagnosisManager.h"
+#import "DiagnosisDetailViewController.h"
 #import "AddParrotViewController.h"
 #import <AppTrackingTransparency/AppTrackingTransparency.h>
 #import <AdSupport/AdSupport.h>
@@ -206,6 +207,12 @@
     [self.healthDiagnosisView refreshData];
 }
 
+- (void)healthDiagnosisView:(HealthDiagnosisView *)view didSelectDiagnosisRecord:(DiagnosisRecord *)record {
+    // 跳转到诊断详情页面
+    DiagnosisDetailViewController *detailVC = [[DiagnosisDetailViewController alloc] initWithDiagnosisRecord:record];
+    detailVC.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:detailVC animated:YES];
+}
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];

@@ -14,6 +14,7 @@
 
 @interface HealthDiagnosisView ()
 @property (nonatomic, strong) NSString *filePath;
+@property (nonatomic, strong) NSString *fileName;
 @end
 
 @implementation HealthDiagnosisView
@@ -216,7 +217,7 @@
     [historyScrollView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(historyLabel.mas_bottom).offset(10);
         make.left.right.equalTo(containerView).inset(20);
-        make.height.mas_equalTo(150);
+        make.height.mas_equalTo(250); // 增加高度从150到250
         make.bottom.equalTo(containerView).offset(-20);
     }];
     
@@ -273,6 +274,7 @@
         NSString *filePath = [documentsDirectory stringByAppendingPathComponent:fileName];
         NSData *imageData = UIImageJPEGRepresentation(selectedImage, 0.8);
         [imageData writeToFile:filePath atomically:YES];
+        self.fileName = fileName;
         self.filePath = filePath;
     }
 }
@@ -286,6 +288,7 @@
     self.photoPreview.image = nil;
     self.photoPreviewContainer.hidden = YES;
     self.photoButton.hidden = NO;
+    self.fileName = nil;
     self.filePath = nil;
 }
 
@@ -340,7 +343,7 @@
             } else {
                 // 保存诊断记录
                 DiagnosisRecord *record = [[DiagnosisRecord alloc] initWithSymptoms:symptoms
-                                                                         photoPath:photoPath
+                                                                         photoPath:self.fileName
                                                                       aiDiagnosis:diagnosis
                                                                        confidence:confidence];
                 
@@ -418,6 +421,12 @@
     containerView.layer.shadowOpacity = 0.1;
     containerView.layer.shadowRadius = 2;
     
+    // 添加点击手势
+    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(recordViewTapped:)];
+    [containerView addGestureRecognizer:tapGesture];
+    containerView.userInteractionEnabled = YES;
+    containerView.tag = [self.diagnosisRecords indexOfObject:record]; // 存储记录索引
+    
     // Date label
     UILabel *dateLabel = [[UILabel alloc] init];
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -428,7 +437,7 @@
     [containerView addSubview:dateLabel];
     [dateLabel mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.left.equalTo(containerView).offset(12);
-        make.right.lessThanOrEqualTo(containerView).offset(-12);
+        make.right.lessThanOrEqualTo(containerView).offset(-40); // 为箭头留出空间
     }];
     
     // Symptoms label
@@ -441,7 +450,7 @@
     [symptomsLabel mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(dateLabel.mas_bottom).offset(4);
         make.left.equalTo(containerView).offset(12);
-        make.right.equalTo(containerView).offset(-12);
+        make.right.equalTo(containerView).offset(-40); // 为箭头留出空间
     }];
     
     // Confidence label
@@ -454,10 +463,35 @@
         make.top.equalTo(symptomsLabel.mas_bottom).offset(4);
         make.left.equalTo(containerView).offset(12);
         make.bottom.equalTo(containerView).offset(-12);
-        make.right.lessThanOrEqualTo(containerView).offset(-12);
+        make.right.lessThanOrEqualTo(containerView).offset(-40); // 为箭头留出空间
+    }];
+    
+    // 箭头指示器
+    UIImageView *arrowImageView = [[UIImageView alloc] init];
+    arrowImageView.image = [UIImage systemImageNamed:@"chevron.right"];
+    arrowImageView.tintColor = ParrotTextGray;
+    arrowImageView.contentMode = UIViewContentModeScaleAspectFit;
+    [containerView addSubview:arrowImageView];
+    [arrowImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.centerY.equalTo(containerView);
+        make.right.equalTo(containerView).offset(-12);
+        make.width.height.mas_equalTo(16);
     }];
     
     return containerView;
+}
+
+- (void)recordViewTapped:(UITapGestureRecognizer *)gesture {
+    UIView *tappedView = gesture.view;
+    NSInteger recordIndex = tappedView.tag;
+    
+    if (recordIndex >= 0 && recordIndex < self.diagnosisRecords.count) {
+        DiagnosisRecord *selectedRecord = self.diagnosisRecords[recordIndex];
+        
+        if ([self.delegate respondsToSelector:@selector(healthDiagnosisView:didSelectDiagnosisRecord:)]) {
+            [self.delegate healthDiagnosisView:self didSelectDiagnosisRecord:selectedRecord];
+        }
+    }
 }
 
 - (void)showLoadingIndicator {

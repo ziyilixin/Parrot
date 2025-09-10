@@ -10,11 +10,13 @@
 
 @class DiagnosisRecord;
 @class DiagnosisManager;
+@class HealthDiagnosisView;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol HealthDiagnosisViewDelegate <NSObject>
 - (void)healthDiagnosisDidComplete;
+- (void)healthDiagnosisView:(HealthDiagnosisView *)view didSelectDiagnosisRecord:(DiagnosisRecord *)record;
 @end
 
 @interface HealthDiagnosisView : UIView <ImagePickerManagerDelegate>
