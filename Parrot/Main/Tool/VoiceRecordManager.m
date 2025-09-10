@@ -109,8 +109,25 @@
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [[SpeechToText sharedInstance] startRecognitionWithAudioURL:self.audioFileURL completion:^(NSString * _Nullable text, NSError * _Nullable error) {
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        if (text.length > 0 && [self.delegate respondsToSelector:@selector(VoiceRecordManagerDidFinishRecordingWithText:)]) {
+                        if (error) {
+                            // 处理语音识别错误
+                            if (error.code == 1101) {
+                                NSLog(@"语音识别服务暂时不可用，请检查网络连接");
+                                // 不显示错误提示，因为这是系统级错误
+                            } else {
+                                NSLog(@"语音识别失败：%@", error.localizedDescription);
+                            }
+                            
+                            if ([self.delegate respondsToSelector:@selector(VoiceRecordManagerDidFailRecording)]) {
+                                [self.delegate VoiceRecordManagerDidFailRecording];
+                            }
+                        } else if (text.length > 0 && [self.delegate respondsToSelector:@selector(VoiceRecordManagerDidFinishRecordingWithText:)]) {
                             [self.delegate VoiceRecordManagerDidFinishRecordingWithText:text];
+                        } else {
+                            // 没有识别到文字
+                            if ([self.delegate respondsToSelector:@selector(VoiceRecordManagerDidFailRecording)]) {
+                                [self.delegate VoiceRecordManagerDidFailRecording];
+                            }
                         }
                     });
                 }];

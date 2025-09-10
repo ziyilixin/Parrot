@@ -8,6 +8,7 @@
 #import "MainTabBarController.h"
 #import "HomeViewController.h"
 #import "MineViewController.h"
+#import "FAQViewController.h"
 #import "MainNavigationController.h"
 
 @interface MainTabBarController ()<UITabBarControllerDelegate>
@@ -61,6 +62,21 @@
     homeVC.tabBarItem.imageInsets = UIEdgeInsetsMake(5, 0, -5, 0);
     MainNavigationController *homeNav = [[MainNavigationController alloc] initWithRootViewController:homeVC];
     
+    // FAQ View Controller
+    FAQViewController *faqVC = [[FAQViewController alloc] init];
+    // FAQ uses question mark icon
+    UIImage *faqNormalImage = [UIImage systemImageNamed:@"questionmark.circle"];
+    UIImage *faqSelectedImage = [UIImage systemImageNamed:@"questionmark.circle.fill"];
+    faqNormalImage = [faqNormalImage imageWithTintColor:normalColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+    faqSelectedImage = [faqSelectedImage imageWithTintColor:selectedColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+    
+    faqVC.tabBarItem.image = faqNormalImage;
+    faqVC.tabBarItem.selectedImage = faqSelectedImage;
+    faqVC.tabBarItem.title = @"";
+    // Move image down 6 pixels
+    faqVC.tabBarItem.imageInsets = UIEdgeInsetsMake(5, 0, -5, 0);
+    MainNavigationController *faqNav = [[MainNavigationController alloc] initWithRootViewController:faqVC];
+    
     MineViewController *mineVC = [[MineViewController alloc] init];
     // Mine uses person icon
     UIImage *mineNormalImage = [UIImage systemImageNamed:@"person"];
@@ -75,7 +91,7 @@
     mineVC.tabBarItem.imageInsets = UIEdgeInsetsMake(5, 0, -5, 0);
     MainNavigationController *mineNav = [[MainNavigationController alloc] initWithRootViewController:mineVC];
     
-    [self setViewControllers:@[homeNav, mineNav]];
+    [self setViewControllers:@[homeNav, faqNav, mineNav]];
 }
 
 #pragma mark - UITabBarControllerDelegate

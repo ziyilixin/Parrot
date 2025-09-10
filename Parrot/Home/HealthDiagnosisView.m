@@ -643,7 +643,12 @@
 }
 
 - (void)VoiceRecordManagerDidFailRecording {
-    NSLog(@"录音失败");
+    NSLog(@"语音识别失败");
+    // 可以在这里显示一个友好的提示，但不显示技术性错误信息
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self showAlertWithTitle:@"Voice Recognition Failed" 
+                         message:@"Unable to recognize speech. Please try again or type your symptoms manually."];
+    });
 }
 
 - (void)VoiceRecordManagerDidUpdateDuration:(NSInteger)duration {

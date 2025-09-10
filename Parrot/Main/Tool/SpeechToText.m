@@ -51,18 +51,33 @@
         return;
     }
     
+    // 检查语音识别器是否可用
+    if (!self.speechRecognizer.isAvailable) {
+        NSError *error = [NSError errorWithDomain:@"SpeechToText"
+                                           code:1101
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Speech recognition service is not available. Please check your network connection and try again."}];
+        completion(nil, error);
+        return;
+    }
+    
     // 先取消之前的任务
     [self cancelRecognition];
     
     // 创建识别请求
     self.recognitionRequest = [[SFSpeechURLRecognitionRequest alloc] initWithURL:audioURL];
+    self.recognitionRequest.shouldReportPartialResults = NO; // 只报告最终结果，减少错误
     
     // 创建识别任务
     self.recognitionTask = [self.speechRecognizer recognitionTaskWithRequest:self.recognitionRequest
                                                                  resultHandler:^(SFSpeechRecognitionResult * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            [SVProgressHUD showInfo:[NSString stringWithFormat:@"Speech recognition error：%@",error.localizedDescription]];
-            NSLog(@"Speech recognition error：%@", error.localizedDescription);
+            // 过滤掉常见的系统错误，避免重复显示
+            if (error.code != 1101) {
+                NSLog(@"Speech recognition error：%@", error.localizedDescription);
+                [SVProgressHUD showInfo:[NSString stringWithFormat:@"Speech recognition error：%@",error.localizedDescription]];
+            } else {
+                NSLog(@"Speech recognition service temporarily unavailable (Code: %ld)", (long)error.code);
+            }
             completion(nil, error);
             return;
         }
