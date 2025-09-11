@@ -8,6 +8,7 @@
 #import "HealthDiagnosisView.h"
 #import "DiagnosisManager.h"
 #import "DiagnosisRecord.h"
+#import "FreeUsageManager.h"
 #import "Masonry.h"
 #import "ParrotColor.h"
 #import "ImagePickerManager.h"
@@ -231,13 +232,14 @@
     // History scroll view
     UIScrollView *historyScrollView = [[UIScrollView alloc] init];
     historyScrollView.backgroundColor = [UIColor clearColor];
-    historyScrollView.showsVerticalScrollIndicator = NO;
+    historyScrollView.showsVerticalScrollIndicator = YES; // 显示滚动指示器
+    historyScrollView.showsHorizontalScrollIndicator = NO;
     [containerView addSubview:historyScrollView];
     self.historyScrollView = historyScrollView;
     [historyScrollView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.equalTo(historyLabel.mas_bottom).offset(10);
         make.left.right.equalTo(containerView).inset(20);
-        make.height.mas_equalTo(300); // 增加高度到300，确保More按钮可见
+        make.height.mas_equalTo(350); // 减少高度，让More按钮更容易看到
         make.bottom.equalTo(containerView).offset(-20);
     }];
     
@@ -260,15 +262,77 @@
 - (void)diagnoseButtonTapped {
     // 验证输入
     if (self.symptomsTextView.text.length == 0) {
-        [self showAlertWithTitle:@"" message:@"Please enter symptoms description"];
+        [self showAlertWithTitle:@"Input Required" message:@"Please enter symptoms description"];
         return;
     }
     
-    // 执行诊断
-    if (self.selectedPhoto) {
-        NSLog(@"self.filePath = %@",self.filePath);
-        [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:self.filePath];
+    NSString *userId = [LFWebData shared].userId;
+    if (!userId || userId.length == 0) {
+        [self showAlertWithTitle:@"Login Required" message:@"Please login to use AI diagnosis"];
+        return;
     }
+    
+    // 检查免费次数
+    NSInteger remainingFreeUsage = [[FreeUsageManager sharedManager] getRemainingFreeUsageForUser:userId];
+    
+    if (remainingFreeUsage > 0) {
+        // 有免费次数，直接使用免费机会
+        [self performDiagnosisWithFreeUsage:userId];
+    } else {
+        // 没有免费次数，检查金币
+        [self checkCoinsAndPerformDiagnosis:userId];
+    }
+}
+
+- (void)performDiagnosisWithFreeUsage:(NSString *)userId {
+    // 使用免费机会
+    BOOL success = [[FreeUsageManager sharedManager] useFreeUsageForUser:userId];
+    if (success) {
+        // 执行诊断，标记为使用免费机会
+        [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:self.filePath useFreeUsage:YES];
+    } else {
+        [self showAlertWithTitle:@"Error" message:@"Failed to use free diagnosis. Please try again."];
+    }
+}
+
+- (void)checkCoinsAndPerformDiagnosis:(NSString *)userId {
+    // 获取当前可用金币
+    [UserRepository getUserCoinsWithCompletion:^(NSInteger availableCoins, BOOL isSuccess) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (isSuccess) {
+                if (availableCoins >= 5) {
+                    // 金币足够，执行诊断
+                    [self performDiagnosisWithCoins:userId];
+                } else {
+                    // 金币不足，提示充值
+                    [self showInsufficientCoinsAlert];
+                }
+            } else {
+                [self showAlertWithTitle:@"Error" message:@"Failed to check coins. Please try again."];
+            }
+        });
+    } completionHandler:^{
+        
+    }];
+}
+
+- (void)performDiagnosisWithCoins:(NSString *)userId {
+    // 执行诊断，标记为使用金币
+    [self performDiagnosisWithSymptoms:self.symptomsTextView.text photoPath:self.filePath useFreeUsage:NO];
+}
+
+- (void)showInsufficientCoinsAlert {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Insufficient Coins"
+                                                                   message:@"You need at least 5 coins to use AI diagnosis. Please go to Mine page to purchase coins."
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK"
+                                                       style:UIAlertActionStyleDefault
+                                                     handler:nil];
+    [alert addAction:okAction];
+    
+    UIViewController *currentVC = [self getCurrentViewController];
+    [currentVC presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)photoButtonTapped {
@@ -345,7 +409,7 @@
     }
 }
 
-- (void)performDiagnosisWithSymptoms:(NSString *)symptoms photoPath:(NSString *)photoPath {
+- (void)performDiagnosisWithSymptoms:(NSString *)symptoms photoPath:(NSString *)photoPath useFreeUsage:(BOOL)useFreeUsage {
     // 显示加载指示器
     [self showLoadingIndicator];
     
@@ -361,24 +425,54 @@
                 NSString *errorMessage = error.localizedDescription;
                 [self showAlertWithTitle:@"Diagnosis Failed" message:errorMessage];
             } else {
-                // 保存诊断记录
-                DiagnosisRecord *record = [[DiagnosisRecord alloc] initWithSymptoms:symptoms
-                                                                         photoPath:self.fileName
-                                                                      aiDiagnosis:diagnosis
-                                                                       confidence:confidence];
-                
-                if ([self.diagnosisManager saveDiagnosisRecord:record]) {
-                    [self showDiagnosisResult:diagnosis confidence:confidence];
-                    [self loadDiagnosisHistory];
-                    
-                    if ([self.delegate respondsToSelector:@selector(healthDiagnosisDidComplete)]) {
-                        [self.delegate healthDiagnosisDidComplete];
-                    }
-                } else {
-                    [self showAlertWithTitle:@"Error" message:@"Failed to save diagnosis record"];
-                }
+                // 诊断成功，根据使用类型保存记录
+                [self handleSuccessfulDiagnosis:symptoms diagnosis:diagnosis confidence:confidence useFreeUsage:useFreeUsage];
             }
         });
+    }];
+}
+
+- (void)handleSuccessfulDiagnosis:(NSString *)symptoms diagnosis:(NSString *)diagnosis confidence:(NSString *)confidence useFreeUsage:(BOOL)useFreeUsage {
+    if (useFreeUsage) {
+        // 使用免费机会，直接保存记录
+        [self saveDiagnosisRecord:symptoms diagnosis:diagnosis confidence:confidence];
+    } else {
+        // 使用金币，需要扣减金币
+        [self deductCoinsAndSaveRecord:symptoms diagnosis:diagnosis confidence:confidence];
+    }
+}
+
+- (void)saveDiagnosisRecord:(NSString *)symptoms diagnosis:(NSString *)diagnosis confidence:(NSString *)confidence {
+    DiagnosisRecord *record = [[DiagnosisRecord alloc] initWithSymptoms:symptoms
+                                                             photoPath:self.fileName
+                                                          aiDiagnosis:diagnosis
+                                                           confidence:confidence];
+    
+    if ([self.diagnosisManager saveDiagnosisRecord:record]) {
+        [self showDiagnosisResult:diagnosis confidence:confidence];
+        [self loadDiagnosisHistory];
+        
+        if ([self.delegate respondsToSelector:@selector(healthDiagnosisDidComplete)]) {
+            [self.delegate healthDiagnosisDidComplete];
+        }
+    } else {
+        [self showAlertWithTitle:@"Error" message:@"Failed to save diagnosis record"];
+    }
+}
+
+- (void)deductCoinsAndSaveRecord:(NSString *)symptoms diagnosis:(NSString *)diagnosis confidence:(NSString *)confidence {
+    // 扣减金币
+    [CoinReository reviewModeConsumeWithOutlay:5 source:@"aichat" completion:^(BOOL isSuccess) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (isSuccess) {
+                // 金币扣减成功，保存记录
+                [self saveDiagnosisRecord:symptoms diagnosis:diagnosis confidence:confidence];
+            } else {
+                [self showAlertWithTitle:@"Error" message:@"Failed to deduct coins. Please try again."];
+            }
+        });
+    } completionHandler:^{
+        
     }];
 }
 
@@ -430,8 +524,16 @@
             [self.historyStackView addArrangedSubview:recordView];
         }
         
-        // 如果记录超过3条，显示More按钮
+        // 如果记录超过3条，显示More按钮和提示
         if (self.diagnosisRecords.count > 3) {
+            // 添加提示标签
+            UILabel *hintLabel = [[UILabel alloc] init];
+            hintLabel.text = @"💡 Swipe to see more records";
+            hintLabel.textColor = ParrotTextGray;
+            hintLabel.font = [UIFont systemFontOfSize:12];
+            hintLabel.textAlignment = NSTextAlignmentCenter;
+            [self.historyStackView addArrangedSubview:hintLabel];
+            
             UIButton *moreButton = [self createMoreButton];
             [self.historyStackView addArrangedSubview:moreButton];
         }
@@ -510,21 +612,21 @@
 
 - (UIButton *)createMoreButton {
     UIButton *moreButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    moreButton.backgroundColor = [UIColor whiteColor];
+    moreButton.backgroundColor = ParrotMainColor;
     moreButton.layer.cornerRadius = 8;
     moreButton.layer.shadowColor = [UIColor blackColor].CGColor;
-    moreButton.layer.shadowOffset = CGSizeMake(0, 1);
-    moreButton.layer.shadowOpacity = 0.1;
-    moreButton.layer.shadowRadius = 2;
+    moreButton.layer.shadowOffset = CGSizeMake(0, 2);
+    moreButton.layer.shadowOpacity = 0.15;
+    moreButton.layer.shadowRadius = 4;
     
-    [moreButton setTitle:@"More" forState:UIControlStateNormal];
-    [moreButton setTitleColor:ParrotMainColor forState:UIControlStateNormal];
-    moreButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    [moreButton setTitle:@"📋 View All Records" forState:UIControlStateNormal];
+    [moreButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    moreButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
     
     [moreButton addTarget:self action:@selector(moreButtonTapped) forControlEvents:UIControlEventTouchUpInside];
     
     [moreButton mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.height.mas_equalTo(44);
+        make.height.mas_equalTo(50);
     }];
     
     return moreButton;

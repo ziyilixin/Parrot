@@ -26,7 +26,6 @@
         // 如果有图片，使用 Vision API
         NSData *imageData = [NSData dataWithContentsOfFile:imagePath];
         NSString *base64Image = [imageData base64EncodedStringWithOptions:0];
-        NSLog(@"base64Image = %@",base64Image);
         
         NSString *textContent = message.length == 0 ? @"Please analyze this photo from the perspective of a parrot breeding expert and provide your professional opinion." : [NSString stringWithFormat:@"Please analyze this picture related to parrots and answer my questions: %@", message];
         NSDictionary *userMessage = @{
@@ -56,9 +55,10 @@
     
     // 构建请求体
     NSDictionary *requestBody = @{
-        @"model": @"gpt-4o-mini",
+        //@"model": @"gpt-4o-mini",
+        @"model": @"gpt-4o",
         @"messages": messages,
-        @"max_tokens": @1000,
+        //@"max_tokens": @1000,
         @"temperature": @0.7
     };
     

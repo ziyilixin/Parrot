@@ -26,6 +26,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<DiagnosisRecord *> *)getDiagnosisRecordsForUserId:(NSString *)userId;
 - (DiagnosisRecord *)getDiagnosisRecordById:(NSString *)recordId;
 
+// User data cleanup
+- (BOOL)deleteAllDiagnosisRecordsForUser:(NSString *)userId; // 删除指定用户的所有诊断记录
+
 // AI诊断功能
 - (void)performAIDiagnosisWithSymptoms:(NSString *)symptoms
                             photoPath:(NSString * _Nullable)photoPath

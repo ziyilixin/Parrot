@@ -10,6 +10,9 @@
 #import "MineCell.h"
 #import "WalletViewController.h"
 #import "LoginViewController.h"
+#import "ParrotDataManager.h"
+#import "DiagnosisManager.h"
+#import "FreeUsageManager.h"
 
 @interface MineViewController ()<UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *tableView;
@@ -221,6 +224,7 @@ static NSString * const headViewId = @"MineHeadView";
         [SVProgressHUD dismiss];
         if (isSuccess) {
             // After successful account deletion, remove all local user data
+            [self cleanupLocalUserData];
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 LoginViewController *loginVC = [[LoginViewController alloc] init];
@@ -230,6 +234,42 @@ static NSString * const headViewId = @"MineHeadView";
     } completionHandler:^{
         [SVProgressHUD dismiss];
     }];
+}
+
+- (void)cleanupLocalUserData {
+    NSString *userId = [LFWebData shared].userId;
+    if (!userId || userId.length == 0) {
+        NSLog(@"No user ID found for cleanup");
+        return;
+    }
+    
+    NSLog(@"Starting cleanup of local data for user: %@", userId);
+    
+    // 删除鹦鹉信息
+    BOOL parrotCleanupSuccess = [[ParrotDataManager sharedManager] deleteAllParrotInfoForUser:userId];
+    if (parrotCleanupSuccess) {
+        NSLog(@"Successfully cleaned up parrot data");
+    } else {
+        NSLog(@"Failed to clean up parrot data");
+    }
+    
+    // 删除诊断历史记录
+    BOOL diagnosisCleanupSuccess = [[DiagnosisManager sharedManager] deleteAllDiagnosisRecordsForUser:userId];
+    if (diagnosisCleanupSuccess) {
+        NSLog(@"Successfully cleaned up diagnosis data");
+    } else {
+        NSLog(@"Failed to clean up diagnosis data");
+    }
+    
+    // 删除免费次数记录
+    BOOL freeUsageCleanupSuccess = [[FreeUsageManager sharedManager] deleteFreeUsageForUser:userId];
+    if (freeUsageCleanupSuccess) {
+        NSLog(@"Successfully cleaned up free usage data");
+    } else {
+        NSLog(@"Failed to clean up free usage data");
+    }
+    
+    NSLog(@"Local data cleanup completed for user: %@", userId);
 }
 
 //- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {

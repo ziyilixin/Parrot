@@ -47,6 +47,17 @@
             make.edges.equalTo(bgView);
         }];
         
+        UIImageView *coinImageView = [[UIImageView alloc] init];
+        coinImageView.image = ImageNamed(@"login_logo");
+        coinImageView.layer.masksToBounds = YES;
+        coinImageView.layer.cornerRadius = 12;
+        [contentContainer addSubview:coinImageView];
+        [coinImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerX.equalTo(contentContainer);
+            make.top.equalTo(contentContainer).offset(16);
+            make.width.height.mas_equalTo(60);
+        }];
+        
         UIButton *promotionButton = [UIButton buttonWithType:UIButtonTypeCustom];
         [promotionButton setTitle:@"Promotion" forState:UIControlStateNormal];
         [promotionButton setTitleColor:ColorFFFFFF forState:UIControlStateNormal];
@@ -67,17 +78,6 @@
         promotionButton.layer.mask = maskLayer;
         self.promotionButton = promotionButton;
         
-        UIImageView *coinImageView = [[UIImageView alloc] init];
-        coinImageView.image = ImageNamed(@"login_logo");
-        coinImageView.layer.masksToBounds = YES;
-        coinImageView.layer.cornerRadius = 12;
-        [contentContainer addSubview:coinImageView];
-        [coinImageView mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.centerX.equalTo(contentContainer);
-            make.top.equalTo(contentContainer).offset(16);
-            make.width.height.mas_equalTo(60);
-        }];
-        
         UILabel *numLabel = [[UILabel alloc] init];
         numLabel.textColor = ParrotTextDarkGray;
         numLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightBold];
@@ -97,7 +97,7 @@
         priceButton.layer.cornerRadius = 18;
         [contentContainer addSubview:priceButton];
         [priceButton mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.top.equalTo(self.numLabel.mas_bottom).offset(16);
+            make.bottom.equalTo(contentContainer).offset(-6);
             make.centerX.equalTo(contentContainer);
             make.width.mas_equalTo(100);
             make.height.mas_equalTo(36);

@@ -256,6 +256,31 @@
     return parrotInfo;
 }
 
+- (BOOL)deleteAllParrotInfoForUser:(NSString *)userId {
+    if (!userId || userId.length == 0) {
+        NSLog(@"Invalid user ID for deletion");
+        return NO;
+    }
+    
+    // 确保数据库连接正常
+    if (!self.database || ![self.database goodConnection]) {
+        [self initializeDatabase];
+    }
+    
+    NSString *deleteSQL = @"DELETE FROM parrot_info WHERE user_id = ?";
+    
+    BOOL success = [self.database executeUpdate:deleteSQL, userId];
+    
+    if (success) {
+        NSInteger changes = [self.database changes];
+        NSLog(@"Successfully deleted %ld parrot records for user: %@", (long)changes, userId);
+    } else {
+        NSLog(@"Failed to delete parrot records for user %@: %@", userId, [self.database lastErrorMessage]);
+    }
+    
+    return success;
+}
+
 - (void)dealloc {
     [self closeDatabase];
 }

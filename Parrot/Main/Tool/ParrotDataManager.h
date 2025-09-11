@@ -40,6 +40,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (ParrotInfo * _Nullable)getCurrentUserMainParrot; // 获取当前用户的主要鹦鹉信息
 - (BOOL)hasParrotInfoForCurrentUser; // 检查当前用户是否有鹦鹉信息
 
+// User data cleanup
+- (BOOL)deleteAllParrotInfoForUser:(NSString *)userId; // 删除指定用户的所有鹦鹉信息
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -13,6 +13,7 @@
 #import "DiagnosisDetailViewController.h"
 #import "DiagnosisHistoryViewController.h"
 #import "AddParrotViewController.h"
+#import "FreeUsageManager.h"
 #import <AppTrackingTransparency/AppTrackingTransparency.h>
 #import <AdSupport/AdSupport.h>
 
@@ -20,6 +21,8 @@
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) ParrotProfileView *parrotProfileView;
+@property (nonatomic, strong) UIView *freeUsageView;
+@property (nonatomic, strong) UILabel *freeUsageLabel;
 @property (nonatomic, strong) HealthDiagnosisView *healthDiagnosisView;
 @end
 
@@ -46,6 +49,7 @@
     // Reload data from database every time the view appears
     [self.parrotProfileView loadParrotData];
     [self.healthDiagnosisView refreshData];
+    [self updateFreeUsageDisplay];
 }
 
 - (void)applyAdvertising {
@@ -132,7 +136,7 @@
     [contentView addSubview:topSpacerView];
     [topSpacerView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.top.left.right.equalTo(contentView);
-        make.height.mas_equalTo(kStatusBarHeight + 20);
+        make.height.mas_equalTo(0);
     }];
     
     // 鹦鹉档案视图
@@ -144,13 +148,42 @@
         make.left.right.equalTo(contentView);
     }];
     
+    // 免费次数显示视图
+    UIView *freeUsageView = [[UIView alloc] init];
+    freeUsageView.backgroundColor = [UIColor whiteColor];
+    freeUsageView.layer.cornerRadius = 12;
+    freeUsageView.layer.shadowColor = [UIColor blackColor].CGColor;
+    freeUsageView.layer.shadowOffset = CGSizeMake(0, 2);
+    freeUsageView.layer.shadowOpacity = 0.1;
+    freeUsageView.layer.shadowRadius = 4;
+    freeUsageView.hidden = YES; // 默认隐藏，有免费次数时显示
+    [contentView addSubview:freeUsageView];
+    self.freeUsageView = freeUsageView;
+    [freeUsageView mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.top.equalTo(parrotProfileView.mas_bottom).offset(20);
+        make.left.right.equalTo(contentView).inset(16);
+        make.height.mas_equalTo(50);
+    }];
+    
+    // 免费次数标签
+    UILabel *freeUsageLabel = [[UILabel alloc] init];
+    freeUsageLabel.textAlignment = NSTextAlignmentCenter;
+    freeUsageLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+    freeUsageLabel.textColor = ParrotMainColor;
+    [freeUsageView addSubview:freeUsageLabel];
+    self.freeUsageLabel = freeUsageLabel;
+    [freeUsageLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.center.equalTo(freeUsageView);
+        make.left.right.equalTo(freeUsageView).inset(16);
+    }];
+    
     // 健康诊断视图
     HealthDiagnosisView *healthDiagnosisView = [[HealthDiagnosisView alloc] init];
     healthDiagnosisView.delegate = self;
     [contentView addSubview:healthDiagnosisView];
     self.healthDiagnosisView = healthDiagnosisView;
     [healthDiagnosisView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(parrotProfileView.mas_bottom).offset(20);
+        make.top.equalTo(freeUsageView.mas_bottom).offset(20);
         make.left.right.equalTo(contentView);
         make.bottom.equalTo(contentView).offset(-20);
     }];
@@ -158,6 +191,32 @@
     // Initialize databases
     [[ParrotDataManager sharedManager] initializeDatabase];
     [[DiagnosisManager sharedManager] initializeDatabase];
+}
+
+- (void)updateFreeUsageDisplay {
+    NSString *userId = [LFWebData shared].userId;
+    if (!userId || userId.length == 0) {
+        // 用户未登录，隐藏免费次数显示
+        self.freeUsageView.hidden = YES;
+        return;
+    }
+    
+    NSInteger remainingFreeUsage = [[FreeUsageManager sharedManager] getRemainingFreeUsageForUser:userId];
+    
+    // 始终显示视图，根据免费次数显示不同内容
+    self.freeUsageView.hidden = NO;
+    
+    if (remainingFreeUsage > 0) {
+        // 有免费次数，显示剩余次数
+        if (remainingFreeUsage == 1) {
+            self.freeUsageLabel.text = @"🎉 You have 1 free AI diagnosis remaining!";
+        } else {
+            self.freeUsageLabel.text = [NSString stringWithFormat:@"🎉 You have %ld free AI diagnoses remaining!", (long)remainingFreeUsage];
+        }
+    } else {
+        // 没有免费次数，显示金币提示
+        self.freeUsageLabel.text = @"💰 Each AI diagnosis costs 5 coins";
+    }
 }
 
 - (void)setupNotifications {
@@ -206,6 +265,8 @@
 - (void)healthDiagnosisDidComplete {
     // Refresh the diagnosis history
     [self.healthDiagnosisView refreshData];
+    // Update free usage display
+    [self updateFreeUsageDisplay];
 }
 
 - (void)healthDiagnosisView:(HealthDiagnosisView *)view didSelectDiagnosisRecord:(DiagnosisRecord *)record {
